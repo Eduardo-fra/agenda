@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Agenda - SISTEMAPESSOA2</title>
+  <style>
+    body { font-family: Arial; max-width: 600px; margin: 20px auto; }
+    label, input, button { display: block; margin-bottom: 10px; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    #mensagem { margin-top: 10px; font-weight: bold; }
+    .btn-excluir { color: red; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>Agenda de Compromissos</h1>
+
+  <form id="formAgenda">
+    <label>CPF:
+      <input type="text" id="cpf" required />
+    </label>
+    <label>Data:
+      <input type="date" id="data" required />
+    </label>
+    <label>Descrição:
+      <input type="text" id="descricao" required />
+    </label>
+    <button type="submit">Cadastrar</button>
+  </form>
+
+  <div id="mensagem"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>CPF</th>
+        <th>Data</th>
+        <th>Descrição</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody id="listaCompromissos">
+      <!-- Compromissos aqui -->
+    </tbody>
+  </table>
+
+  <script>
+    const form = document.getElementById('formAgenda');
+    const mensagem = document.getElementById('mensagem');
+    const lista = document.getElementById('listaCompromissos');
+
+    function mostrarMensagem(msg, sucesso = true) {
+      mensagem.textContent = msg;
+      mensagem.style.color = sucesso ? 'green' : 'red';
+    }
+
+    function carregarCompromissos() {
+      fetch('controllerAgenda.php?acao=consultar')
+        .then(res => res.json())
+        .then(data => {
+          lista.innerHTML = '';
+          if (!data.length) {
+            lista.innerHTML = '<tr><td colspan="4">Nenhum compromisso encontrado</td></tr>';
+            return;
+          }
+          data.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${item.cpf}</td>
+              <td>${item.data}</td>
+              <td>${item.descricao}</td>
+              <td><span class="btn-excluir" onclick="excluirCompromisso('${item.cpf}', '${item.data}')">Excluir</span></td>
+            `;
+            lista.appendChild(tr);
+          });
+        });
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const dados = {
+        cpf: form.cpf.value.trim(),
+        data: form.data.value,
+        descricao: form.descricao.value.trim()
+      };
+
+      fetch('controllerAgenda.php?acao=inserir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+      })
+      .then(res => res.json())
+      .then(resposta => {
+        if (resposta.success) {
+          mostrarMensagem(resposta.message);
+          form.reset();
+          carregarCompromissos();
+        } else {
+          mostrarMensagem(resposta.message, false);
+        }
+      });
+    });
+
+    function excluirCompromisso(cpf, data) {
+      if (!confirm("Tem certeza que deseja excluir este compromisso?")) return;
+
+      fetch('controllerAgenda.php?acao=excluir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf: cpf, data: data })
+      })
+      .then(res => res.json())
+      .then(resposta => {
+        if (resposta.success) {
+          mostrarMensagem(resposta.message);
+          carregarCompromissos();
+        } else {
+          mostrarMensagem(resposta.message, false);
+        }
+      });
+    }
+
+    // Inicial
+    carregarCompromissos();
+  </script>
+
+</body>
+</html>
